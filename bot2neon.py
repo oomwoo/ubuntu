@@ -132,6 +132,8 @@ for rec_num in rec_numbers:
 
     frame_times = [(n - start_frame_number) * frame_period for n in numbers]
 
+    frame_file_names = []
+
     for l in lines:
         # line has user command?
         i = extract_command_value(l, 'u')
@@ -146,9 +148,10 @@ for rec_num in rec_numbers:
         # TODO add image name + target class to Neon image list
         file_name = str(frame_idx + start_frame_number).zfill(8) + ".jpg"
         s = file_name + ", " + str(i)
-        if s in csv:
+        if file_name in frame_file_names:
             continue
         csv.append(s)
+        frame_file_names.append(file_name)
         # Move jpg file
         src = rec_dir + file_name
         dst = dataset_dir + file_name
@@ -178,5 +181,3 @@ subprocess.call(cmd, shell=True)
 # python neon/data/batch_writer.py  --rec_dir /usr/local/data/macrobatch_out \
 #                                   --image_dir /location/of/csv_files \
 #                                   --set_type csv
-
-# TODO implement forget command
