@@ -28,7 +28,6 @@ def usage():
     print "python bot2neon.py"
     print "  Convert video and control recordings into training Neon sets"
     print "  -p rec: log and video file name prefix"
-    print "  -f 5: video FPS, default 5"
     print "  -d: display received commands for debug"
     print "  -m: horizontal mirror"
     print "  -v: vertical mirror"
@@ -60,19 +59,16 @@ def create_dir(dir_path_name):
 hor_flip = False
 ver_flip = False
 debug = False
-fps = 5
 file_name_prefix = "rec"
 validation_pct = 10
 
-opts, args = getopt.getopt(sys.argv[1:], "dfpmv?")
+opts, args = getopt.getopt(sys.argv[1:], "dpmv?")
 
 for opt, arg in opts:
     if opt == '-d':
         debug = True
     elif opt == '-p':
         file_name_prefix = arg
-    elif opt == '-f':
-        fps = int(arg)
     elif opt == '-m':
         hor_flip = not(hor_flip)
     elif opt == '-v':
