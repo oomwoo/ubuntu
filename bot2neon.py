@@ -48,7 +48,12 @@ def extract_time(s):
 
 
 def rm_files(file_path_name):
-    command = "rm " + file_path_name + " 2> /dev/null"
+    command = "rm -r " + file_path_name + " 2> /dev/null"
+    subprocess.call(command, shell=True)
+
+
+def create_dir(dir_path_name):
+    command = "mkdir " + dir_path_name + " 2> /dev/null"
     subprocess.call(command, shell=True)
 
 
@@ -83,7 +88,8 @@ rec_dir = home_dir + "/ubuntu/rec/"
 dataset_dir = home_dir + "/ubuntu/dataset/"
 
 # Wipe data set directory
-rm_files(dataset_dir + "*.*")
+rm_files(dataset_dir)
+create_dir(dataset_dir)
 
 # TODO process multiple sets of recordings
 # Glob recordings
@@ -92,6 +98,7 @@ rec_numbers = [int((re.findall('\d+', s))[0]) for s in file_names]
 
 start_frame_number = 1
 csv = []
+class_list = []
 
 # Iterate over each recording file set
 for rec_num in rec_numbers:
@@ -108,9 +115,6 @@ for rec_num in rec_numbers:
         cmd = cmd + ",vflip"
     cmd = cmd + "\"  -start_number " + str(start_frame_number) + " " + rec_dir + "%08d.jpg 2>&1 | grep pts"
     output = subprocess.check_output(cmd, shell=True)
-
-    # Parse output: frame number, pts_time
-    # TODO Raspberry Pi doesn't write pts_time?
 
     # Read list of extracted frames and their timestamps
     file_names = glob.glob(rec_dir + "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].jpg")
@@ -131,6 +135,7 @@ for rec_num in rec_numbers:
     frame_period = (log_end_time - log_start_time) / len(numbers)
 
     frame_times = [(n - start_frame_number) * frame_period for n in numbers]
+    print rec_file_name + ".h264 FPS " + "{:.2f}".format(frame_period)
 
     frame_file_names = []
 
@@ -144,17 +149,25 @@ for rec_num in rec_numbers:
         # find image number best matching that time
         frame_times_diff = [abs(ft - t) for ft in frame_times]
         frame_idx = frame_times_diff.index(min(frame_times_diff))
+        frame_no = numbers[frame_idx]
 
-        # TODO add image name + target class to Neon image list
-        file_name = str(frame_idx + start_frame_number).zfill(8) + ".jpg"
-        s = file_name + ", " + str(i)
+        # Create class sub-directory
+        subdir_name = str(i)
+        if i not in class_list:
+            create_dir(dataset_dir + subdir_name)
+            class_list.append(i)
+
+        # Add image name + target class to Neon image list
+        file_name = str(frame_no).zfill(8) + ".jpg"
         if file_name in frame_file_names:
             continue
+        s = subdir_name + '/' + file_name + ", " + str(i)
         csv.append(s)
         frame_file_names.append(file_name)
+
         # Move jpg file
         src = rec_dir + file_name
-        dst = dataset_dir + file_name
+        dst = dataset_dir + subdir_name + '/' + file_name
         os.rename(src, dst)
 
     start_frame_number = max(numbers) + 1
