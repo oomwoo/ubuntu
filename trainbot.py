@@ -32,20 +32,20 @@ args = parser.parse_args()
 
 home_dir = os.path.expanduser("~")
 data_dir = home_dir + "/nervana/data/"
-file_prefix = "trained_bot_model_64c5516p22c5532p22a50e"
+file_prefix = "trained/trained_bot_model_64c5516p22c3332p22a50e"
 num_epochs = 30  # args.epochs
 param_file_name = file_prefix + str(num_epochs) + ".prm"
 
 # Define CNN
 train = ImageLoader(repo_dir=data_dir, set_name='train',
-                        inner_size=64,
+                        inner_size=32,
                         scale_range=0,  # Force scaling to match inner_size
                         do_transforms=False,
                         shuffle=True,
                         contrast_range=(75,125))
 
 test = ImageLoader(repo_dir=data_dir, set_name='validation',
-                    inner_size=64,
+                    inner_size=32,
                     do_transforms=False,
                     scale_range=0,  # Force scaling to match inner_size
                     shuffle=True,
@@ -60,7 +60,7 @@ opt_gdm = GradientDescentMomentum(learning_rate=0.01,
 bn = True
 layers = [Conv((5, 5, 16), init=init_uni, activation=Rectlin(), batch_norm=bn),
           Pooling((2, 2)),
-          Conv((5, 5, 32), init=init_uni, activation=Rectlin(), batch_norm=bn),
+          Conv((3, 3, 32), init=init_uni, activation=Rectlin(), batch_norm=bn),
           Pooling((2, 2)),
           Affine(nout=50, init=init_uni, activation=Rectlin(), batch_norm=bn),
           Affine(nout=4, init=init_uni, activation=Softmax())]
