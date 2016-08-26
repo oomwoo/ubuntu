@@ -16,7 +16,7 @@
 Train robot to drive autonomously. Use a small convolutional neural network.
 """
 
-#import numpy as np
+import os
 from neon.initializers import Uniform
 from neon.layers import Affine, Conv, Pooling, GeneralizedCost
 from neon.models import Model
@@ -30,22 +30,21 @@ from neon.data.imageloader import ImageLoader
 parser = NeonArgparser(__doc__)
 args = parser.parse_args()
 
-# hyperparameters
-num_epochs = args.epochs
+home_dir = os.path.expanduser("~")
+data_dir = home_dir + "/nervana/data/"
+file_prefix = "trained_bot_model_64c5516p22c5532p22a50e"
+num_epochs = 30  # args.epochs
+param_file_name = file_prefix + str(num_epochs) + ".prm"
 
-#(X_train, y_train), (X_test, y_test), nclass = load_cifar10(path=args.data_dir)
-
-#train = ArrayIterator(X_train, y_train, nclass=nclass, lshape=(3, 32, 32))
-#test = ArrayIterator(X_test, y_test, nclass=nclass, lshape=(3, 32, 32))
-
-train = ImageLoader(repo_dir='/home/ilia/nervana/data', set_name='train',
+# Define CNN
+train = ImageLoader(repo_dir=data_dir, set_name='train',
                         inner_size=64,
                         scale_range=0,  # Force scaling to match inner_size
                         do_transforms=False,
                         shuffle=True,
                         contrast_range=(75,125))
 
-test = ImageLoader(repo_dir='/home/ilia/nervana/data', set_name='validation',
+test = ImageLoader(repo_dir=data_dir, set_name='validation',
                     inner_size=64,
                     do_transforms=False,
                     scale_range=0,  # Force scaling to match inner_size
@@ -63,16 +62,24 @@ layers = [Conv((5, 5, 16), init=init_uni, activation=Rectlin(), batch_norm=bn),
           Pooling((2, 2)),
           Conv((5, 5, 32), init=init_uni, activation=Rectlin(), batch_norm=bn),
           Pooling((2, 2)),
-          Affine(nout=100, init=init_uni, activation=Rectlin(), batch_norm=bn),
+          Affine(nout=50, init=init_uni, activation=Rectlin(), batch_norm=bn),
           Affine(nout=4, init=init_uni, activation=Softmax())]
 
 cost = GeneralizedCost(costfunc=CrossEntropyMulti())
 
+# Create model
 mlp = Model(layers=layers)
+callbacks = Callbacks(mlp, eval_set=test, **args.callback_args)  # Track cost function
 
-# configure callbacks
-callbacks = Callbacks(mlp, eval_set=test, **args.callback_args)
-
+# Train model
 mlp.fit(train, optimizer=opt_gdm, num_epochs=num_epochs, cost=cost, callbacks=callbacks)
 
+# Check performance
 print 'Misclassification error = %.1f%%' % (mlp.eval(test, metric=Misclassification())*100)
+
+# Save trained model
+mlp.save_params(param_file_name)
+
+# dt = datetime.datetime.now()
+# s = dt.strftime("%b_%d_%Y_%H_%M")
+# mlp.save_params("trained_bot_model_" + s + ".prm")
