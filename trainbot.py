@@ -34,18 +34,19 @@ home_dir = os.path.expanduser("~")
 data_dir = home_dir + "/nervana/data/"
 file_prefix = "trained/trained_bot_model_64c5516p22c3332p22a50e"
 num_epochs = 30  # args.epochs
+img_size = 32
 param_file_name = file_prefix + str(num_epochs) + ".prm"
 
 # Define CNN
 train = ImageLoader(repo_dir=data_dir, set_name='train',
-                        inner_size=32,
+                        inner_size=img_size,
                         scale_range=0,  # Force scaling to match inner_size
                         do_transforms=False,
                         shuffle=True,
-                        contrast_range=(75,125))
+                        contrast_range=(75, 125))
 
 test = ImageLoader(repo_dir=data_dir, set_name='validation',
-                    inner_size=32,
+                    inner_size=img_size,
                     do_transforms=False,
                     scale_range=0,  # Force scaling to match inner_size
                     shuffle=True,
@@ -79,7 +80,3 @@ print 'Misclassification error = %.1f%%' % (mlp.eval(test, metric=Misclassificat
 
 # Save trained model
 mlp.save_params(param_file_name)
-
-# dt = datetime.datetime.now()
-# s = dt.strftime("%b_%d_%Y_%H_%M")
-# mlp.save_params("trained_bot_model_" + s + ".prm")
