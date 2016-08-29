@@ -68,7 +68,7 @@ validation_pct = 10
 frame_skip = False
 skip_frame_extraction = True
 home_dir = os.path.expanduser("~")
-rec_dir = home_dir + "/ubuntu/rec/"
+video_dir = home_dir + "/ubuntu/video/"
 dataset_dir = home_dir + "/ubuntu/dataset/"
 out_data_dir = home_dir + "/ubuntu/neon/"
 
@@ -94,7 +94,7 @@ def extract_frames():
     create_dir(dataset_dir)
 
     # Glob recordings
-    file_names = glob.glob(rec_dir + "*.h264")
+    file_names = glob.glob(video_dir + "*.h264")
 
     start_frame_number = 1
     class_list = []
@@ -104,7 +104,7 @@ def extract_frames():
         print "Extracting frames from " + video_file_name
 
         # Delete old files
-        rm_files(rec_dir + "*.jpg")
+        rm_files(video_dir + "*.jpg")
 
         # Extract frames from video(s)
         cmd = "avconv -i " + video_file_name + " -qscale 1 "
@@ -121,11 +121,11 @@ def extract_frames():
             if ver_flip:
                 cmd += "vflip"
             cmd += "\""
-        cmd += " -start_number " + str(start_frame_number) + " " + rec_dir + "%08d.jpg"  # 2>&1"
+        cmd += " -start_number " + str(start_frame_number) + " " + video_dir + "%08d.jpg"  # 2>&1"
         subprocess.check_output(cmd, shell=True)
 
         # Read list of extracted frames and their timestamps
-        file_names = glob.glob(rec_dir + "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].jpg")
+        file_names = glob.glob(video_dir + "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].jpg")
         numbers = [int((re.findall('\d+', s))[0]) for s in file_names]
 
         # Read bot commands and their timestamps
@@ -173,14 +173,14 @@ def extract_frames():
             frame_file_names.append(file_name)
 
             # Move jpg file
-            src = rec_dir + file_name
+            src = video_dir + file_name
             dst = dataset_dir + subdir_name + '/' + file_name
             os.rename(src, dst)
 
         start_frame_number = max(numbers) + 1
 
     # Delete unused frames
-    rm_files(rec_dir + "*.jpg")
+    rm_files(video_dir + "*.jpg")
 
 
 # avconv -i video0.avi -vf "select=''not(mod(n\,5))'',showinfo,vflip,hflip"  %08d.jpg
