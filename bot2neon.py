@@ -33,10 +33,10 @@ from neon.data import BatchWriter
 def usage():
     print "python bot2neon.py"
     print "  Convert video and control recordings into training Neon dataset"
+    print "  -w: skip frame extraction, only write batches (after visual inspection)"
     print "  -s n: keep one frame out of each n frames, default no skip"
     print "  -m: horizontal mirror"
     print "  -v: vertical mirror"
-    print "  -w: skip frame extraction, only write batches (after visual inspection)"
     print "  -?: print usage"
 
 
@@ -66,11 +66,11 @@ hor_flip = False
 ver_flip = False
 validation_pct = 10
 frame_skip = False
-skip_frame_extraction = False
+skip_frame_extraction = True
 home_dir = os.path.expanduser("~")
 rec_dir = home_dir + "/ubuntu/rec/"
 dataset_dir = home_dir + "/ubuntu/dataset/"
-nervana_data_dir = home_dir + "/nervana/data/"
+out_data_dir = home_dir + "/ubuntu/neon/"
 
 opts, args = getopt.getopt(sys.argv[1:], "mv?ws:")
 
@@ -101,6 +101,7 @@ def extract_frames():
 
     # Iterate over each recording file set
     for video_file_name in file_names:
+        print "Extracting frames from " + video_file_name
 
         # Delete old files
         rm_files(rec_dir + "*.jpg")
@@ -188,14 +189,16 @@ if not skip_frame_extraction:
     extract_frames()
 
 # Write macro-batches
-rm_files(nervana_data_dir + "macrobatch*")
-rm_files(nervana_data_dir + "*_file.csv.gz")
+rm_files(out_data_dir + "*")
 
 # cmd = "python " + home_dir + "/neon/neon/data/batch_writer.py --image_dir " + dataset_dir + " --set_type directory"
 # subprocess.check_output(cmd, shell=True)
-bw = BatchWriter(out_dir=nervana_data_dir, image_dir=dataset_dir,
-                 macro_size=5000, file_pattern="*.jpg",
-                 pixel_mean=(104.41227722, 119.21331787, 126.80609131))
+# bw = BatchWriter(out_dir=nervana_data_dir, image_dir=dataset_dir,
+#                  macro_size=5000, file_pattern="*.jpg",
+#                  pixel_mean=(104.41227722, 119.21331787, 126.80609131))
+bw = BatchWriter(out_dir=out_data_dir, image_dir=dataset_dir,
+                 macro_size=3072, file_pattern="*.jpg", target_size=0,
+                 validation_pct=validation_pct/100.0)
 bw.run()
 
 print "Please visually inspect sorted images for errors in " + dataset_dir
