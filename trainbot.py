@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Train robot to drive autonomously using Nervana Neon
+# Train robot to drive autonomously
 # See more at https://github.com/oomwoo/
 #
 # Copyright (C) 2016 oomwoo.com
@@ -26,16 +26,14 @@ from neon.callbacks.callbacks import Callbacks
 from neon.data.imageloader import ImageLoader
 from neon.backends import gen_backend
 
-# parse the command line arguments
 
 home_dir = os.path.expanduser("~")
 data_dir = home_dir + "/ubuntu/neon/"
-# file_prefix = "trained/trained_bot_model_32c5516p22c3332p22a50e"
-file_prefix = "model/trained_bot_model_debug"
-num_epochs = 2  # args.epochs
-img_size = 64
-param_file_name = file_prefix + str(num_epochs) + ".prm"
-
+param_file_name = home_dir + "/ubuntu/model/trained_bot_model_debug.prm"
+num_epochs = 2
+img_size = 32
+class_names = ["forward", "left", "right", "backward"]    # from ROBOT-C bot.c
+nclass = len(class_names)
 
 be = gen_backend(backend='cpu', batch_size=128)
 
@@ -43,17 +41,13 @@ be = gen_backend(backend='cpu', batch_size=128)
 train = ImageLoader(repo_dir=data_dir, set_name='train',
                         inner_size=img_size,
                         scale_range=0,  # Force scaling to match inner_size
-                        do_transforms=False,
                         shuffle=True,
                         contrast_range=(75, 125))
 
 test = ImageLoader(repo_dir=data_dir, set_name='validation',
                     inner_size=img_size,
                     do_transforms=False,
-                    scale_range=0,  # Force scaling to match inner_size
-                    shuffle=True,
-                    contrast_range=(75, 125))
-
+                    scale_range=0)
 
 init_uni = Uniform(low=-0.1, high=0.1)
 opt_gdm = GradientDescentMomentum(learning_rate=0.01,
@@ -83,12 +77,7 @@ print 'Misclassification error = %.1f%%' % (mlp.eval(test, metric=Misclassificat
 mlp.save_params(param_file_name)
 
 
-
-
-
-
-
-##############
+# Sanity check
 from PIL import Image
 import numpy as np
 from neon.data.dataiterator import ArrayIterator
@@ -97,44 +86,29 @@ W = img_size
 H = img_size
 L = W*H*3
 size = H, W
-class_names = ["forward", "left", "right", "backward"]    # from ROBOT-C bot.c
-nclass = len(class_names)
 x_new = np.zeros((128, L), dtype=np.float32)
 
 
-test_file_name = home_dir + "/ubuntu/test/backward.jpg"
-image = Image.open(test_file_name)
-print("Loaded " + test_file_name)
-image = image.resize(size)  # , Image.ANTIALIAS)
-image = np.asarray(image, dtype=np.float32)
-x_new[0] = image.reshape(1, L) / 255
+def load_sample(test_file_name):
+    image = Image.open(test_file_name)
+    print("Loaded " + test_file_name)
+    image.show()
+    image = image.resize(size)  # , Image.ANTIALIAS)
+    r, g, b = image.split()
+    image = Image.merge("RGB", (b, g, r))
+    image = np.asarray(image, dtype=np.float32)
+    image = np.transpose(image, (2, 0, 1))
+    return image.reshape(1, L) - 127
 
-test_file_name = home_dir + "/ubuntu/test/forward.jpg"
-image = Image.open(test_file_name)
-print("Loaded " + test_file_name)
-image = image.resize(size)  # , Image.ANTIALIAS)
-image = np.asarray(image, dtype=np.float32)
-x_new[1] = image.reshape(1, L) / 255
-
-test_file_name = home_dir + "/ubuntu/test/right.jpg"
-image = Image.open(test_file_name)
-print("Loaded " + test_file_name)
-image = image.resize(size)  # , Image.ANTIALIAS)
-image = np.asarray(image, dtype=np.float32)
-x_new[2] = image.reshape(1, L) / 255
-
-test_file_name = home_dir + "/ubuntu/test/left.jpg"
-image = Image.open(test_file_name)
-print("Loaded " + test_file_name)
-image = image.resize(size)  # , Image.ANTIALIAS)
-image = np.asarray(image, dtype=np.float32)
-x_new[3] = image.reshape(1, L) / 255
-
+x_new[0] = load_sample(home_dir + "/ubuntu/test/forward.jpg")
+x_new[1] = load_sample(home_dir + "/ubuntu/test/right.jpg")
+x_new[2] = load_sample(home_dir + "/ubuntu/test/left.jpg")
+x_new[3] = load_sample(home_dir + "/ubuntu/test/backward.jpg")
 
 # Run neural network
 inference_set = ArrayIterator(x_new, None, nclass=nclass, lshape=(3, H, W))
 out = mlp.get_outputs(inference_set)
-print out
+# print out
 
 print(class_names[out[0].argmax()])
 print(class_names[out[1].argmax()])

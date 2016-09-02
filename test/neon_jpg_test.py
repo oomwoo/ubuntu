@@ -1,9 +1,6 @@
 #!/usr/bin/python
-# Connect Raspberry Pi to VEX Cortex using bi-directional UART serial link
-# and exchange certain control commands
-# This code runs on Raspberry Pi.
-# VEX Cortex must be running peer code for the link to operate,
-# see https://github.com/oomwoo/vex
+# Sanity-check image recognition using pre-trained model
+# See https://github.com/oomwoo/
 #
 # Copyright (C) 2016 oomwoo.com
 #
@@ -16,25 +13,24 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License <http://www.gnu.org/licenses/> for details.
 
-import time, os
+import time
+import os
 import numpy as np
 from PIL import Image
-from neon.util.argparser import NeonArgparser
 from neon.backends import gen_backend
-from neon.layers import Affine, Conv, Pooling, GeneralizedCost
+from neon.layers import Affine, Conv, Pooling
 from neon.models import Model
 from neon.transforms import Rectlin, Softmax
 from neon.initializers import Uniform
 from neon.data.dataiterator import ArrayIterator
 
+
+# Install Imagemagick to view images
+img_size = 32
+
 # CNN setup
-W = 64
-H = W
 home_dir = os.path.expanduser("~")
-# test_file_name = home_dir + "/ubuntu/test/forward.jpg"
-# test_file_name = home_dir + "/ubuntu/test/backward.jpg"
-test_file_name = home_dir + "/ubuntu/test/left.jpg"
-param_file_name = home_dir + "/ubuntu/model/trained_bot_model_debug10.prm"
+param_file_name = home_dir + "/ubuntu/model/trained_bot_model_32x32.prm"
 class_names = ["forward", "left", "right", "backward"]    # from ROBOT-C bot.c
 nclass = len(class_names)
 be = gen_backend(backend='cpu', batch_size=1)    # NN backend
@@ -48,21 +44,35 @@ layers = [Conv((5, 5, 16), init=init_uni, activation=Rectlin(), batch_norm=bn),
           Affine(nout=nclass, init=init_uni, activation=Softmax())]
 model = Model(layers=layers)
 model.load_params(param_file_name, load_states=False)
+
+
+# Load images to classify
+W = img_size
+H = img_size
 L = W*H*3
 size = H, W
 
-# Load an image to classify
-image = Image.open(test_file_name)
-print("Loaded " + test_file_name)
-start_time = time.time()
-image = image.resize(size)  # , Image.ANTIALIAS)
-image = np.asarray(image, dtype=np.float32)
+def test_recognition(test_file_name):
+    # Load image
+    x_new = np.zeros((1, L), dtype = np.float32)
+    image = Image.open(test_file_name)
+    image.show()
+    print("Loaded " + test_file_name)
 
-# Run neural network
-x_new = image.reshape(1, L) / 255
-inference_set = ArrayIterator(x_new, None, nclass=nclass, lshape=(3, H, W))
-out = model.get_outputs(inference_set)
-print("--- %s seconds per decision --- " % (time.time() - start_time))
-print out
-decision = out[0].argmax()
-print(class_names[decision])
+    # Convert image to sample
+    image = image.resize(size)  # , Image.ANTIALIAS)
+    r, g, b = image.split()
+    image = Image.merge("RGB", (b, g, r))
+    image = np.asarray(image, dtype=np.float32)
+    image = np.transpose(image, (2, 0, 1))
+    x_new = image.reshape(1, L) - 127
+
+    # Run neural network
+    inference_set = ArrayIterator(x_new, None, nclass=nclass, lshape=(3, H, W))
+    out = model.get_outputs(inference_set)
+    print "Recognized as " + class_names[out.argmax()]
+
+test_recognition(home_dir + "/ubuntu/test/forward.jpg")
+test_recognition(home_dir + "/ubuntu/test/right.jpg")
+test_recognition(home_dir + "/ubuntu/test/left.jpg")
+test_recognition(home_dir + "/ubuntu/test/backward.jpg")
